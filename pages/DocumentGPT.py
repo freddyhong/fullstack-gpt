@@ -1,36 +1,50 @@
 import streamlit as st
-import time
+from langchain.text_splitter import CharacterTextSplitter
+from langchain.embeddings import OpenAIEmbeddings, CacheBackedEmbeddings
+from langchain.vectorstores import FAISS
+from langchain.storage import LocalFileStore
+from langchain.document_loaders import TextLoader
 
 st.set_page_config(
     page_title="DocumentGPT",
     page_icon="📄",
 )
+
+def embed_file(file):
+    file_content = file.read()
+    file_path = f"./.cache/files/{file.name}"
+    with open(file_path, "wb") as f:
+        f.write(file_content)
+    cache_dir = LocalFileStore(f"./.cache/embeddings/{file.name}")
+
+    splitter = CharacterTextSplitter.from_tiktoken_encoder(
+        separator="\n",
+        chunk_size=600,
+        chunk_overlap=100,
+    )
+    loader = TextLoader(file_path)
+
+    docs = loader.load_and_split(text_splitter=splitter)
+
+    embeddings = OpenAIEmbeddings()
+
+    cached_embeddings = CacheBackedEmbeddings.from_bytes_store(embeddings, cache_dir)
+
+    vectorstore = FAISS.from_documents(docs, cached_embeddings)
+    retriever = vectorstore.as_retriever()
+    return retriever
+
 st.title("DocumentGPT Home")
 
-if "messages" not in st.session_state:
-    st.session_state["messages"] = []
+st.markdown(
+    """
+    Welcome to DocumentGPT!
+    Use this chatbot to ask questions about your file!
+"""
+)
 
-
-def send_message(role, message, save=True):
-    with st.chat_message(role):
-        st.write(message)
-    if save:
-        st.session_state["messages"].append({"role": role, "message": message})
-
-for message in st.session_state["messages"]:
-    send_message(message["role"], message["message"], save=False)
-
-# Example of using st.status
-# with st.status("Embedding File...", expanded=True) as status:
-#     time.sleep(2)
-#     st.write("Getting the file")
-#     time.sleep(2)
-#     st.write("File embedded")
-#     status.update(label="error", state="error")
-
-message = st.chat_input("Ask AI a question")
-if message:
-    send_message("You", message)
-    with st.spinner("Thinking..."):
-        time.sleep(2)
-    send_message("AI", "You said: " + message)
+file = st.file_uploader("Upload a .docx .pdf or .txt file", type=["pdf", "txt", "docx"])
+if file:
+    retriever = embed_file(file)
+    retriever.invoke("winston")
+    
