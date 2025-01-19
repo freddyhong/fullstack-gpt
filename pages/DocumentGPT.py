@@ -3,7 +3,14 @@ from langchain.text_splitter import CharacterTextSplitter
 from langchain.embeddings import OpenAIEmbeddings, CacheBackedEmbeddings
 from langchain.vectorstores import FAISS
 from langchain.storage import LocalFileStore
-from langchain.document_loaders import TextLoader
+from langchain.document_loaders import TextLoader, PyPDFLoader, Docx2txtLoader
+from langchain.prompts import ChatPromptTemplate
+from langchain.schema.runnable import RunnableLambda, RunnablePassthrough
+from langchain.schema.output_parser import StrOutputParser
+from langchain.chat_models import ChatOpenAI
+from langchain.callbacks.base import BaseCallbackHandler
+import os
+
 
 st.set_page_config(
     page_title="DocumentGPT",
@@ -26,7 +33,15 @@ def embed_file(file):
         chunk_size=600,
         chunk_overlap=100,
     )
-    loader = TextLoader(file_path)
+
+    split_tup = os.path.splitext(file_path)
+    file_extension = split_tup[1]
+    if file_extension == '.pdf':
+        loader = PyPDFLoader(file_path)
+    elif file_extension == '.docx':
+        loader = Docx2txtLoader(file_path)
+    else:
+        loader = TextLoader(file_path)
 
     docs = loader.load_and_split(text_splitter=splitter)
 
@@ -38,15 +53,52 @@ def embed_file(file):
     retriever = vectorstore.as_retriever()
     return retriever
 
+def save_message(message, role):
+    st.session_state["messages"].append({"message": message, "role": role})
+
 def send_message(message, role, save=True):
     with st.chat_message(role):
         st.markdown(message)
     if save:
-        st.session_state["messages"].append({"message": message, "role": role})
+        save_message(message, role)
 
 def paint_history():
     for message in st.session_state["messages"]:
         send_message(message["message"], message["role"], save=False)
+
+def format_documents(docs):
+    return "\n\n".join(document.page_content for document in docs)
+
+class ChatCallbackHandler(BaseCallbackHandler):
+    message = ""
+    def on_llm_start(self, *args, **kwargs):
+        self.message_box = st.empty()
+    def on_llm_end(self, *args, **kwargs):
+        with st.sidebar:
+            save_message(self.message, "ai")
+    def on_llm_new_token(self, token, *args, **kwargs):
+        self.message += token
+        self.message_box.markdown(self.message)
+        
+
+llm = ChatOpenAI(
+    temperature=0.1, 
+    streaming=True,
+    callbacks=[
+        ChatCallbackHandler()
+    ]
+)
+
+prompt = ChatPromptTemplate.from_messages([
+    ("system", """
+    Answer the question using ONLY the following context.
+    If you don't know the answer just say you dont't know.
+    Don't make anything up.
+
+    Context: {context}
+    """),
+    ("human", "{question}")
+])
 
 st.title("DocumentGPT Home")
 
@@ -66,5 +118,12 @@ if file:
     message = st.chat_input("Ask anything about the file")
     if message:
         send_message(message, "human")
+        output_parser = StrOutputParser()
+        chain = {
+            "context": retriever | RunnableLambda(format_documents), # retriever.invoke(message)
+            "question": RunnablePassthrough()
+        } | prompt | llm | output_parser
+        with st.chat_message("ai"):
+            response = chain.invoke(message)
 else:
     st.session_state["messages"] = []
