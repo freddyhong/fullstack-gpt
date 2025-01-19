@@ -45,7 +45,9 @@ def embed_file(file):
 
     docs = loader.load_and_split(text_splitter=splitter)
 
-    embeddings = OpenAIEmbeddings()
+    embeddings = OpenAIEmbeddings(
+        openai_api_key=openai_api_key,
+    )
 
     cached_embeddings = CacheBackedEmbeddings.from_bytes_store(embeddings, cache_dir)
 
@@ -79,51 +81,75 @@ class ChatCallbackHandler(BaseCallbackHandler):
     def on_llm_new_token(self, token, *args, **kwargs):
         self.message += token
         self.message_box.markdown(self.message)
-        
 
-llm = ChatOpenAI(
-    temperature=0.1, 
-    streaming=True,
-    callbacks=[
-        ChatCallbackHandler()
-    ]
-)
+def main():
+    if not openai_api_key:
+        return
+
+    llm = ChatOpenAI(
+        temperature=0.1, 
+        streaming=True,
+        openai_api_key=openai_api_key,
+        callbacks=[
+            ChatCallbackHandler()
+        ]
+    )
+
+    if file:
+        retriever = embed_file(file)
+        send_message("File uploaded! Ask any questions!", "ai", save=False)
+        paint_history()
+        message = st.chat_input("Ask anything about the file")
+        if message:
+            send_message(message, "human")
+            output_parser = StrOutputParser()
+            chain = {
+                "context": retriever | RunnableLambda(format_documents), # retriever.invoke(message)
+                "question": RunnablePassthrough()
+            } | prompt | llm | output_parser
+            with st.chat_message("ai"):
+                chain.invoke(message)
+    else:
+        st.session_state["messages"] = []
+        return
 
 prompt = ChatPromptTemplate.from_messages([
-    ("system", """
-    Answer the question using ONLY the following context.
-    If you don't know the answer just say you dont't know.
-    Don't make anything up.
+        ("system", """
+        Answer the question using ONLY the following context.
+        If you don't know the answer just say you dont't know.
+        Don't make anything up.
 
-    Context: {context}
-    """),
-    ("human", "{question}")
-])
+        Context: {context}
+        """),
+        ("human", "{question}")
+    ])
 
 st.title("DocumentGPT Home")
 
 st.markdown(
     """
-    Welcome to DocumentGPT!
-    Use this chatbot to ask questions about your file!
-    Upload your file on the sidebar to get started.
+Welcome!
+            
+Use this chatbot to ask questions to an AI about your files!
+
+1. Input your OpenAI API Key on the sidebar
+2. Upload your file on the sidebar.
+3. Ask questions related to the document.
 """
 )
+
 with st.sidebar:
-    file = st.file_uploader("Upload a .docx .pdf or .txt file", type=["pdf", "txt", "docx"])
-if file:
-    retriever = embed_file(file)
-    send_message("File uploaded! Ask any questions!", "ai", save=False)
-    paint_history()
-    message = st.chat_input("Ask anything about the file")
-    if message:
-        send_message(message, "human")
-        output_parser = StrOutputParser()
-        chain = {
-            "context": retriever | RunnableLambda(format_documents), # retriever.invoke(message)
-            "question": RunnablePassthrough()
-        } | prompt | llm | output_parser
-        with st.chat_message("ai"):
-            response = chain.invoke(message)
-else:
-    st.session_state["messages"] = []
+    # API Key 입력
+    openai_api_key = st.text_input("Input your OpenAI API Key")
+
+    # 파일 선택
+    file = st.file_uploader(
+        "Upload a. txt .pdf or .docx file",
+        type=["pdf", "txt", "docx"],
+    )
+
+try:
+    main()
+except Exception as e:
+    st.error("Check your OpenAI API Key or File")
+    st.write(e)

@@ -11,7 +11,7 @@ st.markdown(
 
     This is a collection of GPT-3.5 powered apps that I have built.
 
-    - [V] [📃 DocumentGPT](/DocumentGPT)
+    - [x] [📃 DocumentGPT](/DocumentGPT)
     - [ ] [🔒 PrivateGPT](/PrivateGPT)
     - [ ] [❓ QuizGPT](/QuizGPT)
     - [ ] [🖥️ SiteGPT](/SiteGPT)
