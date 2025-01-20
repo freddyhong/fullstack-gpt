@@ -81,9 +81,9 @@ def split_file(file):
     return docs
 
 @st.cache_data(show_spinner="Making quiz...")
-def run_quiz_chain(_docs, topic, level):
+def run_quiz_chain(_docs, topic, q_number, level):
     chain = prompt | llm
-    return chain.invoke({"context": _docs, "level": level})
+    return chain.invoke({"context": _docs, "q_number": q_number, "level": level})
 
 
 @st.cache_data(show_spinner="Making Wikipedia...")
@@ -99,7 +99,7 @@ prompt = PromptTemplate.from_template(
     """
     You are a helpful assistant that is role playing as a teacher.
                     
-    Based ONLY on the following context make 5 questions to test the user's knowledge about the text.
+    Based ONLY on the following context make {q_number} questions to test the user's knowledge about the text.
     
     Each question should have 4 answers, three of them must be incorrect and one should be correct.
 
@@ -130,6 +130,7 @@ with st.sidebar:
         if topic:
             docs = wiki_search(topic)
     st.markdown("---")
+    q_number = st.number_input("Number of questions", min_value=1, max_value=15, value=5)
     level = st.selectbox("Quiz Level", ("EASY", "HRAD"))
 if not docs:
     st.markdown(
@@ -159,7 +160,7 @@ else:
                 function,
             ],
     )
-    response = run_quiz_chain(docs, topic if topic else file.name, level)
+    response = run_quiz_chain(docs, topic if topic else file.name, q_number, level)
     response = response.additional_kwargs["function_call"]["arguments"]
 
     with st.form("questions_form"):
