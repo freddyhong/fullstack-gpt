@@ -13,7 +13,7 @@ st.markdown(
 
     - [x] [📃 DocumentGPT](/DocumentGPT)
     - [ ] [🔒 PrivateGPT](/PrivateGPT)
-    - [ ] [❓ QuizGPT](/QuizGPT)
+    - [x] [❓ QuizGPT](/QuizGPT)
     - [ ] [🖥️ SiteGPT](/SiteGPT)
     - [ ] [💼 MeetingGPT](/MeetingGPT)
     - [ ] [📈 InvestorGPT](/InvestorGPT)
