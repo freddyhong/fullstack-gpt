@@ -9,7 +9,9 @@ from langchain.schema.runnable import RunnableLambda, RunnablePassthrough
 from langchain.schema.output_parser import StrOutputParser
 from langchain.chat_models import ChatOpenAI
 from langchain.callbacks.base import BaseCallbackHandler
+from pathlib import Path
 import os
+
 
 
 st.set_page_config(
@@ -24,10 +26,10 @@ if "messages" not in st.session_state:
 def embed_file(file):
     file_content = file.read()
     file_path = f"./.cache/files/{file.name}"
-    with open(file_path, "wb") as f:
+    Path("./.cache/files").mkdir(parents=True, exist_ok=True)
+    with open(file_path, "wb+") as f:
         f.write(file_content)
     cache_dir = LocalFileStore(f"./.cache/embeddings/{file.name}")
-
     splitter = CharacterTextSplitter.from_tiktoken_encoder(
         separator="\n",
         chunk_size=600,
