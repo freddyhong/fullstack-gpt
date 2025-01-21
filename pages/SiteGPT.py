@@ -225,7 +225,7 @@ if url:
             callbacks=[ChatCallbackHandler()],
         )
         retriever = load_website(url)
-        send_message("Website Loaded! Ask me any question!", "ai", save=False)
+        # send_message("Website Loaded! Ask me any question!", "ai", save=False)
         query = st.chat_input("Ask a question abouth the website.")
         if query:
             send_message(query, "human")
