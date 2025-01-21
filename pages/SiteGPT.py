@@ -49,7 +49,7 @@ def choose_answer(inputs):
         f"{answer['answer']} \nSource:{answer['source']} \nDate:{answer['date']} \n\n"
         for answer in answers
     )
-    return choose_chain({"question": question, "answers": condensed})
+    return choose_chain.invoke({"question": question, "answers": condensed})
 
 answers_prompt = ChatPromptTemplate.from_template(
     """
@@ -224,7 +224,8 @@ if url:
             callbacks=[ChatCallbackHandler()],
         )
         retriever = load_website(url)
-        query = st.chat_input("Ask a question to the website.")
+        send_message("Hello, ask me anything about the website", "ai")
+        query = st.chat_input("Ask a question abouth the website.")
         if query:
             send_message(query, "human")
             chain = (
