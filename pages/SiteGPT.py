@@ -195,8 +195,11 @@ with st.sidebar:
     st.write("Github: https://github.com/freddyhong/fullstack-gpt")
 
 if not openai_api_key:
-     st.markdown(
+    st.title("SiteGPT Home")
+    st.markdown(
     """
+    Welcome!
+
     Ask questions about the content of a website.
 
     For now, this app only supports sitemaps and questions about the Clouldfare website"
@@ -209,9 +212,7 @@ if url:
     if ".xml" not in url:
         with st.sidebar:
             st.error("Please write down a Sitemap URL.")
-    if not openai_api_key:
-        st.error("Please input your OpenAI API Key on the sidebar")
-    else:
+    if openai_api_key:
         paint_history()
         get_answer_llm = ChatOpenAI(
             temperature=0.1,
@@ -224,7 +225,7 @@ if url:
             callbacks=[ChatCallbackHandler()],
         )
         retriever = load_website(url)
-        send_message("Hello, ask me anything about the website", "ai")
+        send_message("Website Loaded! Ask me any question!", "ai", save=False)
         query = st.chat_input("Ask a question abouth the website.")
         if query:
             send_message(query, "human")
