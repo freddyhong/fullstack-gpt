@@ -49,8 +49,7 @@ def choose_answer(inputs):
         f"{answer['answer']} \nSource:{answer['source']} \nDate:{answer['date']} \n\n"
         for answer in answers
     )
-    rtn = choose_chain({"question": question, "answers": condensed})
-    return rtn
+    return choose_chain({"question": question, "answers": condensed})
 
 answers_prompt = ChatPromptTemplate.from_template(
     """
